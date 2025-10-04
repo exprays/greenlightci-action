@@ -1,0 +1,56 @@
+name: 'Baseline Compatibility Check'
+description: 'Check web feature compatibility against Baseline data in your PRs'
+author: 'GreenLightCI Team'
+branding:
+  icon: 'shield'
+  color: 'green'
+
+inputs:
+  baseline-year:
+    description: 'Target Baseline year (e.g., "2023")'
+    required: false
+    default: '2023'
+
+  block-newly-available:
+    description: 'Block PRs that use "Newly Available" features'
+    required: false
+    default: 'false'
+
+  block-limited-availability:
+    description: 'Block PRs that use "Limited Availability" features'
+    required: false
+    default: 'true'
+
+  github-token:
+    description: 'GitHub token for API access'
+    required: false
+    default: ${{ github.token }}
+
+  custom-browser-targets:
+    description: 'Custom browser targets (JSON format)'
+    required: false
+    default: ''
+
+  dashboard-url:
+    description: 'URL of GreenLightCI dashboard for reporting (e.g., https://dashboard.greenlightci.com)'
+    required: false
+    default: ''
+
+  dashboard-api-key:
+    description: 'API key for authenticating with dashboard'
+    required: false
+    default: ''
+
+outputs:
+  compatibility-score:
+    description: 'Overall compatibility score (0-100)'
+
+  features-detected:
+    description: 'Number of web features detected'
+
+  blocking-issues:
+    description: 'Number of compatibility issues that would block the PR'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

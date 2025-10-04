@@ -1,0 +1,33 @@
+{
+    "name": "greenlightci-action",
+    "version": "1.0.0",
+    "description": "GitHub Action for Baseline web feature compatibility checking",
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "tsc && ncc build dist/index.js -o dist --minify",
+        "dev": "tsc --watch",
+        "test": "echo \"No tests yet\"",
+        "lint": "eslint src/**/*.ts",
+        "clean": "rimraf dist"
+    },
+    "dependencies": {
+        "@actions/core": "^1.11.1",
+        "@actions/github": "^5.1.1",
+        "@octokit/rest": "^20.1.2",
+        "parse-diff": "^0.11.1",
+        "vitest": "^3.2.4",
+        "web-features": "^0.8.6"
+    },
+    "devDependencies": {
+        "@types/node": "^20.19.19",
+        "@vercel/ncc": "^0.38.4",
+        "rimraf": "^5.0.5",
+        "typescript": "^5.9.3"
+    },
+    "keywords": [
+        "github-action",
+        "baseline",
+        "web-features",
+        "compatibility"
+    ]
+}
