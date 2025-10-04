@@ -1,5 +1,5 @@
-import * as core from '@actions/core';
-import * as github from '@actions/github';
+import * as core from "@actions/core";
+import * as github from "@actions/github";
 import {
   BaselineConfig,
   BaselineStatus,
@@ -18,9 +18,9 @@ import {
   formatErrorForLog,
   getCacheStats,
   pruneAllCaches,
-} from './shared';
-import { getOctokit, getPRDiff, postComment, setStatus } from './github.js';
-import { parsePRDiff, getAddedLines, detectFeatures } from './parser.js';
+} from "./shared/index.js";
+import { getOctokit, getPRDiff, postComment, setStatus } from "./github.js";
+import { parsePRDiff, getAddedLines, detectFeatures } from "./parser.js";
 
 /**
  * Send scan results to GreenLightCI dashboard
@@ -30,21 +30,21 @@ async function sendToDashboard(
   context: typeof github.context,
   config: BaselineConfig
 ): Promise<void> {
-  const dashboardUrl = core.getInput('dashboard-url');
-  const apiKey = core.getInput('dashboard-api-key');
+  const dashboardUrl = core.getInput("dashboard-url");
+  const apiKey = core.getInput("dashboard-api-key");
 
   if (!dashboardUrl) {
-    core.info('ℹ️  Dashboard URL not configured, skipping reporting');
+    core.info("ℹ️  Dashboard URL not configured, skipping reporting");
     return;
   }
 
   if (!apiKey) {
-    core.warning('⚠️  Dashboard API key not provided, skipping reporting');
+    core.warning("⚠️  Dashboard API key not provided, skipping reporting");
     return;
   }
 
   try {
-    core.info('📊 Sending results to dashboard...');
+    core.info("📊 Sending results to dashboard...");
 
     const { owner, repo } = context.repo;
     const prNumber = context.payload.pull_request?.number;
@@ -108,16 +108,16 @@ async function sendToDashboard(
         featureName: r.feature.name,
         status: r.feature.status,
         severity: r.severity,
-        message: `Used in ${r.filePath}${r.line ? ` at line ${r.line}` : ''}`,
+        message: `Used in ${r.filePath}${r.line ? ` at line ${r.line}` : ""}`,
         polyfill: null,
       })),
     };
 
     const response = await fetch(`${dashboardUrl}/api/scans`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': apiKey,
+        "Content-Type": "application/json",
+        "X-API-Key": apiKey,
       },
       body: JSON.stringify(payload),
     });
@@ -129,10 +129,12 @@ async function sendToDashboard(
 
     const result = await response.json();
     core.info(`✅ Results sent to dashboard successfully`);
-    core.info(`   Scan ID: ${result.scan?.id || 'unknown'}`);
+    core.info(`   Scan ID: ${result.scan?.id || "unknown"}`);
   } catch (error) {
     core.warning(
-      `Failed to send results to dashboard: ${error instanceof Error ? error.message : String(error)}`
+      `Failed to send results to dashboard: ${
+        error instanceof Error ? error.message : String(error)
+      }`
     );
     // Don't fail the action if dashboard reporting fails
   }
@@ -143,19 +145,19 @@ async function sendToDashboard(
  */
 export async function run(): Promise<void> {
   try {
-    core.info('🚦 GreenLightCI - Baseline Compatibility Checker');
-    core.info('================================================');
+    core.info("🚦 GreenLightCI - Baseline Compatibility Checker");
+    core.info("================================================");
 
     // Validate inputs and configuration
-    const githubToken = core.getInput('github-token', { required: true });
+    const githubToken = core.getInput("github-token", { required: true });
     if (!githubToken) {
       throw new ConfigurationError(
-        'github-token is required but was not provided'
+        "github-token is required but was not provided"
       );
     }
 
     // Get inputs with validation
-    const customTargetsInput = core.getInput('custom-browser-targets');
+    const customTargetsInput = core.getInput("custom-browser-targets");
     let customTargets = null;
 
     if (customTargetsInput) {
@@ -164,17 +166,19 @@ export async function run(): Promise<void> {
         core.info(`✓ Custom browser targets parsed successfully`);
       } catch (error) {
         throw new ConfigurationError(
-          `Invalid custom-browser-targets format: ${error instanceof Error ? error.message : String(error)}`,
+          `Invalid custom-browser-targets format: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
           { input: customTargetsInput }
         );
       }
     }
 
     const config: BaselineConfig = {
-      targetYear: core.getInput('baseline-year') || '2023',
-      blockNewlyAvailable: core.getBooleanInput('block-newly-available'),
+      targetYear: core.getInput("baseline-year") || "2023",
+      blockNewlyAvailable: core.getBooleanInput("block-newly-available"),
       blockLimitedAvailability: core.getBooleanInput(
-        'block-limited-availability'
+        "block-limited-availability"
       ),
       ...(customTargets ? { customTargets } : {}),
     };
@@ -192,7 +196,7 @@ export async function run(): Promise<void> {
     // Get PR context
     const context = github.context;
     if (!context.payload.pull_request) {
-      core.setFailed('This action must be triggered by a pull_request event');
+      core.setFailed("This action must be triggered by a pull_request event");
       return;
     }
 
@@ -211,8 +215,8 @@ export async function run(): Promise<void> {
       owner,
       repo,
       sha,
-      'pending',
-      'Checking baseline compatibility...'
+      "pending",
+      "Checking baseline compatibility..."
     );
 
     // Get PR diff
@@ -239,7 +243,7 @@ export async function run(): Promise<void> {
       }
 
       // Combine all added content
-      const content = addedLines.map((l) => l.content).join('\n');
+      const content = addedLines.map((l) => l.content).join("\n");
 
       // Detect features
       const featureIds = detectFeatures(file.to, content);
@@ -252,7 +256,7 @@ export async function run(): Promise<void> {
         }
 
         // Determine severity and blocking
-        let severity: 'error' | 'warning' | 'info' = 'info';
+        let severity: "error" | "warning" | "info" = "info";
         let blocking = false;
 
         // Check custom browser targets if provided
@@ -262,10 +266,14 @@ export async function run(): Promise<void> {
             customTargets
           );
           if (!compat.compatible) {
-            severity = 'error';
+            severity = "error";
             blocking = true;
             core.warning(
-              `Feature "${feature.name}" is not compatible with custom targets: ${compat.incompatibleBrowsers.join(', ')}`
+              `Feature "${
+                feature.name
+              }" is not compatible with custom targets: ${compat.incompatibleBrowsers.join(
+                ", "
+              )}`
             );
           }
         }
@@ -276,7 +284,7 @@ export async function run(): Promise<void> {
             widelyCount++;
           } else if (feature.status === BaselineStatus.NewlyAvailable) {
             newlyCount++;
-            severity = 'warning';
+            severity = "warning";
             blocking = config.blockNewlyAvailable;
           } else if (
             feature.status === BaselineStatus.Limited ||
@@ -287,7 +295,7 @@ export async function run(): Promise<void> {
             } else {
               notBaselineCount++;
             }
-            severity = 'error';
+            severity = "error";
             blocking = config.blockLimitedAvailability;
           }
         }
@@ -314,8 +322,8 @@ export async function run(): Promise<void> {
       results,
       score,
       blockingCount: results.filter((r) => r.blocking).length,
-      warningCount: results.filter((r) => r.severity === 'warning').length,
-      infoCount: results.filter((r) => r.severity === 'info').length,
+      warningCount: results.filter((r) => r.severity === "warning").length,
+      infoCount: results.filter((r) => r.severity === "info").length,
       totalFeatures: results.length,
     };
 
@@ -332,7 +340,7 @@ export async function run(): Promise<void> {
     core.setOutput(ACTION_OUTPUTS.BLOCKING_ISSUES, report.blockingCount);
 
     // Format and post comment
-    const comment = await import('./github.js').then((m) =>
+    const comment = await import("./github.js").then((m) =>
       m.formatComment(report)
     );
     await postComment(octokit, owner, repo, pullNumber, comment);
@@ -344,7 +352,7 @@ export async function run(): Promise<void> {
         owner,
         repo,
         sha,
-        'failure',
+        "failure",
         `${report.blockingCount} blocking compatibility issues found`
       );
       core.setFailed(
@@ -356,10 +364,10 @@ export async function run(): Promise<void> {
         owner,
         repo,
         sha,
-        'success',
+        "success",
         `All features are compatible (Score: ${score}/100)`
       );
-      core.info('✅ All checks passed!');
+      core.info("✅ All checks passed!");
     }
 
     // Log cache statistics
@@ -373,7 +381,7 @@ export async function run(): Promise<void> {
     pruneAllCaches();
   } catch (error) {
     // Enhanced error handling with detailed logging
-    core.error('❌ GreenLightCI encountered an error');
+    core.error("❌ GreenLightCI encountered an error");
 
     // Log detailed error information
     const errorLog = formatErrorForLog(error);
@@ -385,24 +393,24 @@ export async function run(): Promise<void> {
     // Handle specific error types
     if (error instanceof ConfigurationError) {
       core.error(
-        '💡 Configuration Error: Please check your workflow configuration'
+        "💡 Configuration Error: Please check your workflow configuration"
       );
       core.setFailed(`Configuration error: ${userMessage}`);
     } else if (error instanceof GitHubAPIError) {
       core.error(
-        '💡 GitHub API Error: Check your token permissions and rate limits'
+        "💡 GitHub API Error: Check your token permissions and rate limits"
       );
       core.setFailed(`GitHub API error: ${userMessage}`);
     } else if (error instanceof ParseError) {
-      core.error('💡 Parse Error: Failed to parse PR diff');
+      core.error("💡 Parse Error: Failed to parse PR diff");
       core.setFailed(`Parse error: ${userMessage}`);
     } else if (error instanceof FeatureDetectionError) {
-      core.error('💡 Feature Detection Error: Failed to detect features');
+      core.error("💡 Feature Detection Error: Failed to detect features");
       core.setFailed(`Feature detection error: ${userMessage}`);
     } else if (error instanceof Error) {
       core.setFailed(error.message);
     } else {
-      core.setFailed('An unknown error occurred');
+      core.setFailed("An unknown error occurred");
     }
 
     // Attempt to clean up caches on error

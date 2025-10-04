@@ -1,6 +1,6 @@
 import * as parseDiff from "parse-diff";
 import { File } from "parse-diff";
-import { ParseError } from "./shared";
+import { ParseError } from "./shared/index.js";
 
 /**
  * Parse diff content and extract file changes (with error handling)

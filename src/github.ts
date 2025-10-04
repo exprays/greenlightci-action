@@ -1,5 +1,5 @@
-import * as core from '@actions/core';
-import { Octokit } from '@octokit/rest';
+import * as core from "@actions/core";
+import { Octokit } from "@octokit/rest";
 import {
   CompatibilityReport,
   CompatibilityResult,
@@ -11,7 +11,7 @@ import {
   githubCache,
   getPRDiffCacheKey,
   GitHubAPIError,
-} from './shared';
+} from "./shared/index.js";
 
 /**
  * Get the Octokit instance for GitHub API
@@ -45,7 +45,7 @@ export async function getPRDiff(
       repo,
       pull_number: pullNumber,
       mediaType: {
-        format: 'diff',
+        format: "diff",
       },
     });
 
@@ -57,7 +57,7 @@ export async function getPRDiff(
     return diffContent;
   } catch (error: any) {
     const statusCode = error?.status || error?.response?.status;
-    const message = error?.message || 'Unknown error';
+    const message = error?.message || "Unknown error";
 
     core.error(`Failed to fetch PR diff: ${message}`);
 
@@ -79,7 +79,7 @@ export function formatComment(report: CompatibilityReport): string {
   comment += `# ${GITHUB_MARKERS.COMMENT_TITLE}\n\n`;
 
   // Overall score with progress bar
-  const scoreEmoji = score >= 90 ? '🟢' : score >= 70 ? '🟡' : '🔴';
+  const scoreEmoji = score >= 90 ? "🟢" : score >= 70 ? "🟡" : "🔴";
   const progressBar = generateProgressBar(score);
   comment += `## Compatibility Score: ${scoreEmoji} **${score}/100**\n\n`;
   comment += `${progressBar}\n\n`;
@@ -88,8 +88,12 @@ export function formatComment(report: CompatibilityReport): string {
   comment += `| Metric | Count | Status |\n`;
   comment += `|--------|-------|--------|\n`;
   comment += `| Features Detected | ${totalFeatures} | ℹ️ |\n`;
-  comment += `| Blocking Issues | ${blockingCount} | ${blockingCount > 0 ? '❌' : '✅'} |\n`;
-  comment += `| Warnings | ${warningCount} | ${warningCount > 0 ? '⚠️' : '✅'} |\n`;
+  comment += `| Blocking Issues | ${blockingCount} | ${
+    blockingCount > 0 ? "❌" : "✅"
+  } |\n`;
+  comment += `| Warnings | ${warningCount} | ${
+    warningCount > 0 ? "⚠️" : "✅"
+  } |\n`;
   comment += `| Safe to Use | ${report.infoCount} | ✅ |\n\n`;
 
   if (results.length === 0) {
@@ -104,10 +108,10 @@ export function formatComment(report: CompatibilityReport): string {
   // Group results by severity
   const blocking = results.filter((r: CompatibilityResult) => r.blocking);
   const warnings = results.filter(
-    (r: CompatibilityResult) => r.severity === 'warning' && !r.blocking
+    (r: CompatibilityResult) => r.severity === "warning" && !r.blocking
   );
   const info = results.filter(
-    (r: CompatibilityResult) => r.severity === 'info'
+    (r: CompatibilityResult) => r.severity === "info"
   );
 
   // Blocking issues with action items
@@ -133,7 +137,11 @@ export function formatComment(report: CompatibilityReport): string {
   // Info - collapsible for cleaner view
   if (info.length > 0) {
     comment += `## ✅ Safe to Use\n\n`;
-    comment += `<details>\n<summary><b>View ${info.length} widely available feature${info.length > 1 ? 's' : ''}</b> (click to expand)</summary>\n\n`;
+    comment += `<details>\n<summary><b>View ${
+      info.length
+    } widely available feature${
+      info.length > 1 ? "s" : ""
+    }</b> (click to expand)</summary>\n\n`;
 
     for (const result of info) {
       comment += formatFeatureResult(result);
@@ -158,7 +166,7 @@ export function formatComment(report: CompatibilityReport): string {
 function generateProgressBar(score: number): string {
   const filled = Math.floor(score / 5); // 20 blocks for 100%
   const empty = 20 - filled;
-  const bar = '█'.repeat(filled) + '░'.repeat(empty);
+  const bar = "█".repeat(filled) + "░".repeat(empty);
   return `\`${bar}\` ${score}%`;
 }
 
@@ -192,13 +200,13 @@ function formatFeatureResult(result: CompatibilityResult): string {
       supportList.push(`Firefox ${feature.support.firefox}+`);
     if (feature.support.safari)
       supportList.push(`Safari ${feature.support.safari}+`);
-    output += supportList.join(' • ') + `\n`;
+    output += supportList.join(" • ") + `\n`;
   }
 
   // Polyfill suggestions for non-widely-available features
   if (
     feature.status !== BaselineStatus.WidelyAvailable &&
-    result.severity !== 'info'
+    result.severity !== "info"
   ) {
     const polyfill = getPolyfillSuggestion(feature.id);
     if (polyfill) {
@@ -226,9 +234,13 @@ function formatFeatureResult(result: CompatibilityResult): string {
 function getStatusBadge(status: BaselineStatus, year?: string): string {
   switch (status) {
     case BaselineStatus.WidelyAvailable:
-      return `![Widely Available](https://img.shields.io/badge/Baseline-Widely%20Available${year ? `%20(${year})` : ''}-brightgreen)`;
+      return `![Widely Available](https://img.shields.io/badge/Baseline-Widely%20Available${
+        year ? `%20(${year})` : ""
+      }-brightgreen)`;
     case BaselineStatus.NewlyAvailable:
-      return `![Newly Available](https://img.shields.io/badge/Baseline-Newly%20Available${year ? `%20(${year})` : ''}-yellow)`;
+      return `![Newly Available](https://img.shields.io/badge/Baseline-Newly%20Available${
+        year ? `%20(${year})` : ""
+      }-yellow)`;
     case BaselineStatus.Limited:
       return `![Limited](https://img.shields.io/badge/Baseline-Limited%20Availability-orange)`;
     case BaselineStatus.NotBaseline:
@@ -267,7 +279,7 @@ export async function postComment(
   body: string
 ): Promise<void> {
   try {
-    core.info('Posting compatibility report to PR...');
+    core.info("Posting compatibility report to PR...");
 
     // Check if we already have a comment
     const { data: comments } = await octokit.rest.issues.listComments({
@@ -303,7 +315,7 @@ export async function postComment(
     }
   } catch (error: any) {
     const statusCode = error?.status || error?.response?.status;
-    const message = error?.message || 'Unknown error';
+    const message = error?.message || "Unknown error";
 
     core.error(`Failed to post comment: ${message}`);
 
@@ -323,7 +335,7 @@ export async function setStatus(
   owner: string,
   repo: string,
   sha: string,
-  state: 'success' | 'failure' | 'pending',
+  state: "success" | "failure" | "pending",
   description: string
 ): Promise<void> {
   try {
@@ -332,21 +344,21 @@ export async function setStatus(
       repo,
       sha,
       state,
-      context: 'Baseline Compatibility',
+      context: "Baseline Compatibility",
       description,
       target_url: `https://github.com/${owner}/${repo}/actions`,
     });
     core.info(`✓ Set status to "${state}": ${description}`);
   } catch (error: any) {
     const statusCode = error?.status || error?.response?.status;
-    const message = error?.message || 'Unknown error';
+    const message = error?.message || "Unknown error";
 
     // Don't fail the action if we can't set status, just warn
     core.warning(
       `Failed to set commit status: ${message} (status code: ${statusCode})`
     );
     core.warning(
-      'This may happen if the GitHub token lacks status check permissions'
+      "This may happen if the GitHub token lacks status check permissions"
     );
   }
 }
