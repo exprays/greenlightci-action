@@ -1,7 +1,14 @@
-import features from "web-features";
 import { BaselineFeature, BaselineStatus, BrowserSupport } from "./types.js";
 import { featureCache, getFeatureCacheKey } from "./cache.js";
 import { wrapError } from "./errors.js";
+
+/**
+ * Dynamically load web-features data
+ * Using dynamic require to force ncc to inline the data instead of extracting it
+ */
+function getWebFeatures(): Record<string, any> {
+  return require("web-features");
+}
 
 /**
  * Get baseline status from web-features data
@@ -66,6 +73,7 @@ export function getBrowserSupport(featureData: any): BrowserSupport {
  */
 export function getAllBaselineFeatures(): Map<string, BaselineFeature> {
   const featureMap = new Map<string, BaselineFeature>();
+  const features = getWebFeatures();
 
   // web-features is an object with feature IDs as keys
   for (const [featureId, featureData] of Object.entries(features)) {
@@ -104,6 +112,7 @@ export function getFeatureById(featureId: string): BaselineFeature | undefined {
     }
 
     // Fetch from web-features
+    const features = getWebFeatures();
     const featureData = (features as any)[featureId];
 
     if (!featureData) {

@@ -4,12 +4,12 @@
     "description": "GitHub Action for Baseline web feature compatibility checking",
     "main": "dist/index.js",
     "scripts": {
-        "build": "npm run clean && tsc && ncc build dist/index.js -o dist-bundle --minify && npm run copy-bundle",
-        "copy-bundle": "node -e \"require('fs').copyFileSync('dist-bundle/index.js', 'dist/index.js')\"",
+        "build": "npm run clean && tsc && npm run bundle",
+        "bundle": "ncc build dist/index.js -o dist-final --minify && rimraf dist && move dist-final dist",
         "dev": "tsc --watch",
         "test": "echo \"No tests yet\"",
         "lint": "eslint src/**/*.ts",
-        "clean": "rimraf dist dist-bundle"
+        "clean": "rimraf dist dist-final"
     },
     "dependencies": {
         "@actions/core": "^1.11.1",
