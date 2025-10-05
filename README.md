@@ -16,6 +16,44 @@ Automatically check web feature compatibility against Baseline data in your pull
 - ⚡ **Fast & Efficient** - Runs in seconds with intelligent caching
 - 🔒 **Secure** - Uses GitHub tokens and API keys for authentication
 
+## 🎯 Supported Features
+
+This action tracks **Web Platform features** using the [web-features](https://github.com/web-platform-dx/web-features) package (v3.3.0), which includes:
+
+### CSS Features
+- Modern layout: Grid, Flexbox, Container Queries, Subgrid
+- Selectors: `:has()`, `:is()`, `:where()`, `:focus-visible`
+- Styling: CSS Nesting, Custom Properties (CSS Variables), `color-mix()`
+- And 1000+ more CSS features
+
+### JavaScript Web APIs
+- Modern APIs: `fetch`, `Promise`, `async/await`
+- Modules: ES6 Modules (`import`/`export`), Top-level `await`
+- DOM APIs: `IntersectionObserver`, `ResizeObserver`, `MutationObserver`
+- Storage: `IndexedDB`, `localStorage`, `sessionStorage`
+- And many more browser APIs
+
+### ⚠️ Important: ECMAScript Language Features Not Tracked
+
+This action **does not** track pure JavaScript language syntax features such as:
+- Optional chaining (`?.`)
+- Nullish coalescing (`??`)
+- Private fields (`#field`)
+- Numeric separators (`1_000_000`)
+
+**Reason**: These are JavaScript language features that are handled by your build tools (Babel, TypeScript) and transpiled for older browsers. The `web-features` dataset focuses on **Web Platform APIs and CSS features** that require actual browser support.
+
+For language feature compatibility, use tools like:
+- [Babel](https://babeljs.io/) with appropriate presets
+- [TypeScript](https://www.typescriptlang.org/) with `target` configuration
+- [Can I Use](https://caniuse.com/) for manual checking
+
+### 📋 Full Feature List
+
+For a complete list of tracked features, see:
+- [web-features GitHub Repository](https://github.com/web-platform-dx/web-features)
+- [Web Platform Baseline](https://web.dev/baseline/)
+
 ## Quick Start
 
 ### Basic Usage
