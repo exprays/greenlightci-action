@@ -28,44 +28,47 @@ async function loadWebFeatures(): Promise<Record<string, any>> {
     // appropriate.
     try {
       // Prefer a dynamic import so ESM-only packages load correctly.
-      const dynamicImport = new Function('specifier', 'return import(specifier)');
-      const mod = await dynamicImport('web-features');
-      
+      const dynamicImport = new Function(
+        "specifier",
+        "return import(specifier)"
+      );
+      const mod = await dynamicImport("web-features");
+
       // Handle different export formats:
       // - v0.x: default export is the features object
       // - v3.x: named export { features, browsers, groups, snapshots }
-      if (mod.features && typeof mod.features === 'object') {
+      if (mod.features && typeof mod.features === "object") {
         webFeaturesData = mod.features;
-      } else if (mod.default && typeof mod.default === 'object') {
+      } else if (mod.default && typeof mod.default === "object") {
         webFeaturesData = mod.default;
       } else {
         webFeaturesData = mod;
       }
-      
+
       return webFeaturesData;
     } catch (error: any) {
       // Dynamic import failed (could be transformed to require during bundling)
       // Try a plain require first (works in many dev setups).
       try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const mod = require('web-features');
-        
+        const mod = require("web-features");
+
         // Handle different export formats
-        if (mod.features && typeof mod.features === 'object') {
+        if (mod.features && typeof mod.features === "object") {
           webFeaturesData = mod.features;
-        } else if (mod.default && typeof mod.default === 'object') {
+        } else if (mod.default && typeof mod.default === "object") {
           webFeaturesData = mod.default;
         } else {
           webFeaturesData = mod;
         }
-        
+
         return webFeaturesData;
       } catch (requireErr: any) {
         // If require fails because `web-features` is ESM (ERR_REQUIRE_ESM),
         // try to load a local JSON snapshot that we include with the action
         // bundle (dist/index.json). This makes the action robust when
         // running as CommonJS.
-        const isESMError = requireErr && requireErr.code === 'ERR_REQUIRE_ESM';
+        const isESMError = requireErr && requireErr.code === "ERR_REQUIRE_ESM";
 
         if (isESMError) {
           try {
@@ -74,19 +77,25 @@ async function loadWebFeatures(): Promise<Record<string, any>> {
             // to the bundled JSON file placed next to `dist/index.js`.
             // Use require with a computed path.
             // eslint-disable-next-line @typescript-eslint/no-var-requires
-            const path = require('path');
-            const jsonPath = path.resolve(__dirname, '../index.json');
+            const path = require("path");
+            const jsonPath = path.resolve(__dirname, "../index.json");
             const snapshot = require(jsonPath);
             webFeaturesData = snapshot.default || snapshot || {};
             return webFeaturesData;
           } catch (snapErr) {
-            console.error('Failed to load local web-features snapshot:', snapErr);
+            console.error(
+              "Failed to load local web-features snapshot:",
+              snapErr
+            );
             webFeaturesData = {};
             return webFeaturesData;
           }
         }
 
-        console.error('Failed to load web-features (require/import):', requireErr);
+        console.error(
+          "Failed to load web-features (require/import):",
+          requireErr
+        );
         webFeaturesData = {};
         return webFeaturesData;
       }
@@ -102,7 +111,9 @@ async function loadWebFeatures(): Promise<Record<string, any>> {
  */
 function getWebFeatures(): Record<string, any> {
   if (webFeaturesData === null) {
-    throw new Error("Web features not loaded yet. Call loadWebFeatures() first.");
+    throw new Error(
+      "Web features not loaded yet. Call loadWebFeatures() first."
+    );
   }
   return webFeaturesData;
 }
@@ -168,7 +179,9 @@ export function getBrowserSupport(featureData: any): BrowserSupport {
 /**
  * Get all baseline features from web-features package
  */
-export async function getAllBaselineFeatures(): Promise<Map<string, BaselineFeature>> {
+export async function getAllBaselineFeatures(): Promise<
+  Map<string, BaselineFeature>
+> {
   const featureMap = new Map<string, BaselineFeature>();
   const features = await loadWebFeatures();
 
@@ -198,7 +211,9 @@ export async function getAllBaselineFeatures(): Promise<Map<string, BaselineFeat
 /**
  * Find feature by ID (with caching)
  */
-export async function getFeatureById(featureId: string): Promise<BaselineFeature | undefined> {
+export async function getFeatureById(
+  featureId: string
+): Promise<BaselineFeature | undefined> {
   try {
     // Validate input
     if (!featureId || typeof featureId !== "string") {
@@ -216,13 +231,13 @@ export async function getFeatureById(featureId: string): Promise<BaselineFeature
 
     // Fetch from web-features
     const features = await loadWebFeatures();
-    
+
     // Handle empty features data
     if (!features || Object.keys(features).length === 0) {
       console.warn(`Web features data is empty or not loaded`);
       return undefined;
     }
-    
+
     const featureData = (features as any)[featureId];
 
     if (!featureData) {

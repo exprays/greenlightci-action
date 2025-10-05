@@ -125,7 +125,7 @@ export function detectJSFeatures(content: string): string[] {
     // private fields, etc.) are ECMAScript spec features, not "web features" tracked
     // by the web-features package. The web-features package focuses on Web Platform
     // APIs and CSS features, not core JavaScript syntax.
-    
+
     // Top-level await IS tracked by web-features as it's a module-level feature
     if (/^(?!.*function).*await\s+/gm.test(content)) {
       detected.add("top-level-await");
