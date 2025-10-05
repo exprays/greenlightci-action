@@ -2,12 +2,109 @@ import { BaselineFeature, BaselineStatus, BrowserSupport } from "./types.js";
 import { featureCache, getFeatureCacheKey } from "./cache.js";
 import { wrapError } from "./errors.js";
 
+// Cache for web-features data
+let webFeaturesData: Record<string, any> | null = null;
+let webFeaturesPromise: Promise<Record<string, any>> | null = null;
+
 /**
- * Dynamically load web-features data
- * Using dynamic require to force ncc to inline the data instead of extracting it
+ * Dynamically load web-features data using dynamic import
+ * web-features is an ES module and must be imported dynamically
+ * We use Function constructor to prevent TypeScript from transforming the dynamic import
+ */
+async function loadWebFeatures(): Promise<Record<string, any>> {
+  if (webFeaturesData !== null) {
+    return webFeaturesData;
+  }
+
+  if (webFeaturesPromise !== null) {
+    return webFeaturesPromise;
+  }
+
+  webFeaturesPromise = (async () => {
+    // Try multiple strategies to load the `web-features` package. Some
+    // environments (bundled CommonJS) can't require an ESM-only package,
+    // so we attempt dynamic import first, then fallback to require, and
+    // finally fall back to a shipped JSON snapshot (dist/index.json) when
+    // appropriate.
+    try {
+      // Prefer a dynamic import so ESM-only packages load correctly.
+      const dynamicImport = new Function('specifier', 'return import(specifier)');
+      const mod = await dynamicImport('web-features');
+      
+      // Handle different export formats:
+      // - v0.x: default export is the features object
+      // - v3.x: named export { features, browsers, groups, snapshots }
+      if (mod.features && typeof mod.features === 'object') {
+        webFeaturesData = mod.features;
+      } else if (mod.default && typeof mod.default === 'object') {
+        webFeaturesData = mod.default;
+      } else {
+        webFeaturesData = mod;
+      }
+      
+      return webFeaturesData;
+    } catch (error: any) {
+      // Dynamic import failed (could be transformed to require during bundling)
+      // Try a plain require first (works in many dev setups).
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const mod = require('web-features');
+        
+        // Handle different export formats
+        if (mod.features && typeof mod.features === 'object') {
+          webFeaturesData = mod.features;
+        } else if (mod.default && typeof mod.default === 'object') {
+          webFeaturesData = mod.default;
+        } else {
+          webFeaturesData = mod;
+        }
+        
+        return webFeaturesData;
+      } catch (requireErr: any) {
+        // If require fails because `web-features` is ESM (ERR_REQUIRE_ESM),
+        // try to load a local JSON snapshot that we include with the action
+        // bundle (dist/index.json). This makes the action robust when
+        // running as CommonJS.
+        const isESMError = requireErr && requireErr.code === 'ERR_REQUIRE_ESM';
+
+        if (isESMError) {
+          try {
+            // Resolve the dist JSON relative to this compiled file.
+            // When running from `dist/shared`, `../index.json` should point
+            // to the bundled JSON file placed next to `dist/index.js`.
+            // Use require with a computed path.
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            const path = require('path');
+            const jsonPath = path.resolve(__dirname, '../index.json');
+            const snapshot = require(jsonPath);
+            webFeaturesData = snapshot.default || snapshot || {};
+            return webFeaturesData;
+          } catch (snapErr) {
+            console.error('Failed to load local web-features snapshot:', snapErr);
+            webFeaturesData = {};
+            return webFeaturesData;
+          }
+        }
+
+        console.error('Failed to load web-features (require/import):', requireErr);
+        webFeaturesData = {};
+        return webFeaturesData;
+      }
+    }
+  })();
+
+  return webFeaturesPromise;
+}
+
+/**
+ * Synchronous wrapper for backwards compatibility
+ * This will throw if called before features are loaded
  */
 function getWebFeatures(): Record<string, any> {
-  return require("web-features");
+  if (webFeaturesData === null) {
+    throw new Error("Web features not loaded yet. Call loadWebFeatures() first.");
+  }
+  return webFeaturesData;
 }
 
 /**
@@ -71,9 +168,9 @@ export function getBrowserSupport(featureData: any): BrowserSupport {
 /**
  * Get all baseline features from web-features package
  */
-export function getAllBaselineFeatures(): Map<string, BaselineFeature> {
+export async function getAllBaselineFeatures(): Promise<Map<string, BaselineFeature>> {
   const featureMap = new Map<string, BaselineFeature>();
-  const features = getWebFeatures();
+  const features = await loadWebFeatures();
 
   // web-features is an object with feature IDs as keys
   for (const [featureId, featureData] of Object.entries(features)) {
@@ -101,8 +198,14 @@ export function getAllBaselineFeatures(): Map<string, BaselineFeature> {
 /**
  * Find feature by ID (with caching)
  */
-export function getFeatureById(featureId: string): BaselineFeature | undefined {
+export async function getFeatureById(featureId: string): Promise<BaselineFeature | undefined> {
   try {
+    // Validate input
+    if (!featureId || typeof featureId !== "string") {
+      console.warn(`Invalid feature ID: ${featureId}`);
+      return undefined;
+    }
+
     // Check cache first
     const cacheKey = getFeatureCacheKey(featureId);
     const cached = featureCache.get(cacheKey);
@@ -112,10 +215,18 @@ export function getFeatureById(featureId: string): BaselineFeature | undefined {
     }
 
     // Fetch from web-features
-    const features = getWebFeatures();
+    const features = await loadWebFeatures();
+    
+    // Handle empty features data
+    if (!features || Object.keys(features).length === 0) {
+      console.warn(`Web features data is empty or not loaded`);
+      return undefined;
+    }
+    
     const featureData = (features as any)[featureId];
 
     if (!featureData) {
+      // Feature not found - this is normal, just return undefined
       return undefined;
     }
 
@@ -139,12 +250,9 @@ export function getFeatureById(featureId: string): BaselineFeature | undefined {
 
     return feature;
   } catch (error) {
-    throw wrapError(
-      error,
-      `Failed to get feature by ID: ${featureId}`,
-      "FEATURE_LOOKUP_ERROR",
-      { featureId }
-    );
+    // Log the error but don't throw - return undefined instead
+    console.error(`Error getting feature by ID ${featureId}:`, error);
+    return undefined;
   }
 }
 

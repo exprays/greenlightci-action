@@ -93,7 +93,7 @@ export function detectCSSFeatures(content: string): string[] {
 
     // Check for CSS Nesting
     if (/&\s*\{|&\s+\./gi.test(content)) {
-      detected.add("css-nesting");
+      detected.add("nesting"); // web-features uses "nesting" not "css-nesting"
     }
 
     // Check for Custom Properties
@@ -121,30 +121,22 @@ export function detectJSFeatures(content: string): string[] {
   try {
     const detected: Set<string> = new Set();
 
-    // Check for optional chaining
-    if (/\?\./g.test(content)) {
-      detected.add("optional-chaining");
-    }
-
-    // Check for nullish coalescing
-    if (/\?\?/g.test(content)) {
-      detected.add("nullish-coalescing");
-    }
-
-    // Check for dynamic import
-    if (/import\(/g.test(content)) {
-      detected.add("dynamic-import");
-    }
-
-    // Check for top-level await
+    // NOTE: Most JavaScript language features (optional chaining, nullish coalescing,
+    // private fields, etc.) are ECMAScript spec features, not "web features" tracked
+    // by the web-features package. The web-features package focuses on Web Platform
+    // APIs and CSS features, not core JavaScript syntax.
+    
+    // Top-level await IS tracked by web-features as it's a module-level feature
     if (/^(?!.*function).*await\s+/gm.test(content)) {
       detected.add("top-level-await");
     }
 
-    // Check for private fields
-    if (/#[a-zA-Z_]/g.test(content)) {
-      detected.add("private-fields");
-    }
+    // Dynamic import() is tracked as "js-modules" in web-features
+    // but the pattern here is too broad - import() is part of modules
+    // For now, we skip it as it's hard to distinguish from regular module usage
+    // if (/import\(/g.test(content)) {
+    //   detected.add("js-modules");
+    // }
 
     return Array.from(detected);
   } catch (error) {

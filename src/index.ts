@@ -249,7 +249,7 @@ export async function run(): Promise<void> {
       const featureIds = detectFeatures(file.to, content);
 
       for (const featureId of featureIds) {
-        const feature = getFeatureById(featureId);
+        const feature = await getFeatureById(featureId);
 
         if (!feature) {
           continue;
